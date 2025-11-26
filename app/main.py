@@ -33,7 +33,7 @@ from routers.base_routers import user_routes
 from routers.routers import item_routes
 from auth.encrypt import get_admin_rights, get_read_write_rights
 
-app = FastAPI(title="FastAPI Template Project", version="1.0.0")
+app = FastAPI(title="MLecture backend", version="1.0.0")
 
 app.include_router(item_routes.router, prefix="/items", tags=["items"])
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
@@ -43,7 +43,7 @@ app.include_router(user_routes.router, prefix="/users", tags=["users"])
 def read_root():
     """
     Health check endpoint for the API.
-    
+
     Returns:
         dict: A dictionary containing the server status.
     """
@@ -54,10 +54,10 @@ def read_root():
 def protected_route():
     """
     Protected endpoint that requires read-write authentication.
-    
+
     Returns:
         dict: A dictionary containing authentication confirmation message.
-        
+
     Raises:
         HTTPException: 401 if user doesn't have read-write privileges.
     """

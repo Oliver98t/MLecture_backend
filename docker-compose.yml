@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: fastapi_example_db
+    container_name: mlecture_backend_db
     restart: always
     env_file:
       - .env
@@ -14,10 +14,10 @@ services:
     ports:
       - "${DB_PORT}:5432"
     networks:
-      - fastapi_example_network
-  fastapi_example_backend:
+      - mlecture_network
+  mlecture_backend:
     build: .
-    container_name: fastapi_example_backend
+    container_name: mlecture_backend
     restart: always
     stdin_open: true
     tty: true
@@ -37,9 +37,9 @@ services:
     volumes:
       - ./app:/app
     networks:
-      - fastapi_example_network
+      - mlecture_network
 volumes:
   postgres_data:
 networks:
-  fastapi_example_network:
+  mlecture_network:
     driver: bridge

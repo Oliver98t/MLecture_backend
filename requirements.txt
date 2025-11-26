@@ -1,3 +1,4 @@
+alembic==1.13.1
 annotated-types==0.7.0
 anyio==4.11.0
 bcrypt==5.0.0
@@ -56,6 +57,6 @@ uvicorn==0.37.0
 uvloop==0.21.0
 watchfiles==1.1.1
 websockets==15.0.1
-alembic==1.13.1
 python-jose[cryptography]
 passlib[bcrypt]
+yt-dlp==2025.11.12
