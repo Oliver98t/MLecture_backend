@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16
+    container_name: fastapi_example_db
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - fastapi_example_network
+  fastapi_example_backend:
+    build: .
+    container_name: fastapi_example_backend
+    restart: always
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    ports:
+      - "${API_PORT}:8000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    depends_on:
+      - db
+    volumes:
+      - ./app:/app
+    networks:
+      - fastapi_example_network
+volumes:
+  postgres_data:
+networks:
+  fastapi_example_network:
+    driver: bridge
