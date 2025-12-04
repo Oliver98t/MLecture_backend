@@ -27,11 +27,12 @@ def download_youtube_audio(url, output_path="audio_downloads"):
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'wav',
+            'preferredquality': '192',
         }],
         'postprocessor_args': [
-            '-ar', '16000',          # 16kHz sample rate
-            '-ac', '1',              # mono channel
-            '-c:a', 'pcm_s16le',     # 16-bit PCM
+            '-ar', '16000',  # Sample rate
+            '-ac', '1',      # Mono channel
+            '-sample_fmt', 's16',  # 16-bit PCM
         ],
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
         'quiet': False,
@@ -45,6 +46,8 @@ def download_youtube_audio(url, output_path="audio_downloads"):
             filename = ydl.prepare_filename(info)
             # Replace extension with wav
             audio_file = os.path.splitext(filename)[0] + '.wav'
+            # Replace extension with wav
+            audio_file = os.path.splitext(filename)[0] + '.wav'
             return audio_file
     except Exception as e:
         print(f"Error downloading audio: {e}")
@@ -53,18 +56,18 @@ def download_youtube_audio(url, output_path="audio_downloads"):
 def transcribe_audio(audio_file_path, whisper_path=WHISPER_PATH):
     """
     Transcribe audio file using whisper-cli
-    
+
     Args:
         audio_file_path: Path to the audio file
         whisper_path: Path to whisper-cli executable
-        
+
     Returns:
         Transcription text or None if failed
     """
     try:
         cmd = [whisper_path, "-f", audio_file_path, "-m", MODEL_PATH,"--output-txt", "--no-timestamps"]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        
+
         if result.returncode == 0:
             # Extract just the transcription text
             return result.stdout.strip()

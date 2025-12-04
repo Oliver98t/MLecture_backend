@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:16
     container_name: mlecture_backend_db
-    restart: always
+    restart: unless-stopped
     env_file:
       - .env
     volumes:
@@ -18,7 +18,7 @@ services:
   mlecture_backend:
     build: .
     container_name: mlecture_backend
-    restart: always
+    restart: unless-stopped
     stdin_open: true
     tty: true
     env_file:
