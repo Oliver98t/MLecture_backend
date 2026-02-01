@@ -1,9 +1,9 @@
 services:
-  azurefunc:
+  mlecture:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: azurefuncexample
+    container_name: mlecture
     ports:
       - "8080:80"
     volumes:
@@ -14,8 +14,6 @@ services:
       - AzureFunctionsJobHost__Logging__Console__IsEnabled=true
       - TERM=xterm-256color
     restart: unless-stopped
-    depends_on:
-      - azurite
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest

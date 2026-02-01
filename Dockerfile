@@ -17,7 +17,8 @@ WORKDIR /workspace
 COPY *.csproj ./
 
 # Copy your custom CA certificate into the container
-COPY Cert.crt /usr/local/share/ca-certificates/
+# comment out line if certificates not required in your dev environment
+#COPY Cert.crt /usr/local/share/ca-certificates/
 
 # Update the CA trust store
 RUN update-ca-certificates

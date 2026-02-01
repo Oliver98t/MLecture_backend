@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "AzureFuncExample": {
+    "mlecture": {
       "commandName": "Project",
       "commandLineArgs": "--port 80",
       "launchBrowser": false

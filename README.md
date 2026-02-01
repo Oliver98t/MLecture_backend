@@ -1,9 +1,9 @@
-# AzureFuncExample
+# mlecture
 
 This project is an **Azure Function App** built with C# (.NET 8). It demonstrates serverless functions that can be deployed to Azure or run locally using Docker.
 
 ## Project Structure
-- **AzureFuncExample.csproj**: Project file
+- **mlecture.csproj**: Project file
 - **Program.cs**: Main entry point
 - **ItemFunctions.cs, UserFunctions.cs, HeartBeat.cs, QueueTrigger.cs, StorageQueue.cs**: Function implementations
 - **host.json, local.settings.json**: Azure Functions configuration
