@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "AzureFuncExample": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 80",
+      "launchBrowser": false
+    }
+  }
+}
