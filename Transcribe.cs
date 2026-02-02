@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Azure.Storage.Queues.Models;
+using Azure.Data.Tables;
 using System.Text.Json;
 
 namespace Company.Function;
@@ -36,17 +38,29 @@ class TranscriptAPI
 public class Transcribe
 {
     private readonly ILogger<Transcribe> _logger;
+    private readonly TableServiceClient _tableServiceClient;
 
-    public Transcribe(ILogger<Transcribe> logger)
+    public Transcribe(ILogger<Transcribe> logger, TableServiceClient tableServiceClient)
     {
         _logger = logger;
+        _tableServiceClient = tableServiceClient;
     }
 
-    [Function("Transcribe")]
-    public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req)
+    [Function("TranscribeTrigger")]
+    public async Task TranscribeTrigger([QueueTrigger("transcribe", Connection = "AzureWebJobsStorage")] QueueMessage message)
     {
-        string transcript  = await TranscriptAPI.TranscribeCall("https://www.youtube.com/watch?v=p30tWWEElxU");
-        _logger.LogInformation(transcript);
-        return new OkObjectResult("Welcome to Azure Functions!");
+        if(message.MessageText == "Triggered")
+        {
+            string transcript  = await TranscriptAPI.TranscribeCall("https://www.youtube.com/watch?v=p30tWWEElxU");
+            var tableClient = _tableServiceClient.GetTableClient("Transcriptions");
+            await tableClient.CreateIfNotExistsAsync();
+
+            var entity = new TableEntity("User", Guid.NewGuid().ToString())
+            {
+                { "Transcript", transcript },
+                { "Timestamp", DateTime.UtcNow }
+            };
+            await tableClient.AddEntityAsync(entity);
+        }
     }
 }
