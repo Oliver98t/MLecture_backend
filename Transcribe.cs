@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Extensions.Tables;
 using Azure.Storage.Queues.Models;
 using Azure.Data.Tables;
 using System.Text.Json;
@@ -46,21 +47,44 @@ public class Transcribe
         _tableServiceClient = tableServiceClient;
     }
 
-    [Function("TranscribeTrigger")]
-    public async Task TranscribeTrigger([QueueTrigger("transcribe", Connection = "AzureWebJobsStorage")] QueueMessage message)
+    public class TranscribeResponse
     {
-        if(message.MessageText == "Triggered")
-        {
-            string transcript  = await TranscriptAPI.TranscribeCall("https://www.youtube.com/watch?v=p30tWWEElxU");
-            var tableClient = _tableServiceClient.GetTableClient("Transcriptions");
-            await tableClient.CreateIfNotExistsAsync();
+        [QueueOutput("transcribe-results", Connection = "AzureWebJobsStorage")]
+        public string? ResultsMessage { get; set; }
 
-            var entity = new TableEntity("User", Guid.NewGuid().ToString())
+        [TableOutput("Transcriptions", Connection = "AzureWebJobsStorage")]
+        public TableEntity? TranscriptionEntity { get; set; }
+    }
+
+    private async Task AddTranscriptToDB(string transcript)
+    {
+        var tableClient = _tableServiceClient.GetTableClient("Transcriptions");
+        await tableClient.CreateIfNotExistsAsync();
+
+        var entity = new TableEntity("User", Guid.NewGuid().ToString())
+        {
+            { "Transcript", transcript },
+            { "Timestamp", DateTime.UtcNow }
+        };
+        await tableClient.AddEntityAsync(entity);
+    }
+
+    [Function("TranscribeTrigger")]
+    public async Task<TranscribeResponse> TranscribeTrigger(
+        [QueueTrigger("transcription-job", Connection = "AzureWebJobsStorage")] QueueMessage message)
+    {
+        var response = new TranscribeResponse();
+
+        if (message.MessageText == "ready")
+        {
+            string transcript = await TranscriptAPI.TranscribeCall("https://www.youtube.com/watch?v=p30tWWEElxU");
+            response.ResultsMessage = "Transcription complete!";
+            response.TranscriptionEntity = new TableEntity("User", Guid.NewGuid().ToString())
             {
                 { "Transcript", transcript },
                 { "Timestamp", DateTime.UtcNow }
             };
-            await tableClient.AddEntityAsync(entity);
         }
+        return response;
     }
 }

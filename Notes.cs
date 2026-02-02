@@ -12,9 +12,9 @@ namespace Company.Function;
 public class Notes
 {
     private readonly ILogger<Notes> _logger;
-    private const string outputQueue = "transcribe";
-    private const string triggerSuccessMessage = "Triggered";
-    private const string triggerFailMessage = "Not Triggered";
+    private const string outputQueue = "transcription-job";
+    private const string triggerSuccessMessage = "ready";
+    private const string triggerFailMessage = "Not ready";
 
     public Notes(ILogger<Notes> logger)
     {
@@ -30,7 +30,7 @@ public class Notes
     }
 
     [Function("Notes")]
-    public async Task<MultiResponse> CreateNotes(
+    public async Task<MultiResponse> StartCreateNotes(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "notes/create-notes/")]
         HttpRequestData req)
     {
