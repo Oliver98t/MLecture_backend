@@ -19,8 +19,10 @@ namespace Company.Function;
 
 public class GroqAPI
 {
-    public static async Task<string> CallGroqApiAsync(string apiKey, string prompt)
+    public static async Task<string> CallGroqApiAsync(string input)
     {
+        string? apiKey = Environment.GetEnvironmentVariable("GroqApiKey");
+        string prompt = $"Transform the following into notes:\n{input}";
         var url = "https://api.groq.com/openai/v1/chat/completions";
         var payload = new
         {
@@ -49,7 +51,33 @@ public class GroqAPI
         using var stream = await response.Content.ReadAsStreamAsync();
         using var reader = new StreamReader(stream);
 
-        return "";
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
+            var json = line.Substring(6);
+            if (json == "[DONE]") break;
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("choices", out var choices))
+                {
+                    foreach (var choice in choices.EnumerateArray())
+                    {
+                        if (choice.TryGetProperty("delta", out var delta))
+                        {
+                            if (delta.TryGetProperty("content", out var contentValue))
+                            {
+                                sb.Append(contentValue.GetString());
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* ignore malformed lines */ }
+        }
+        return sb.ToString();
     }
 }
 
@@ -131,9 +159,9 @@ public class Notes
         [QueueTrigger(QueueConsts.transcriptionResults, Connection = "AzureWebJobsStorage")] QueueMessage message)
     {
         string transcription = message.MessageText;
-        _logger.LogInformation(transcription);
-        //string notes = await GroqAPI.CallGroqApiAsync();
-        await AddNotesToDB(transcription);
+        string notes = await GroqAPI.CallGroqApiAsync(transcription);
+        _logger.LogInformation(notes);
+        await AddNotesToDB(notes);
     }
 
     [Function("GetNotes")]
