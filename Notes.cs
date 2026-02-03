@@ -135,4 +135,31 @@ public class Notes
         //string notes = await GroqAPI.CallGroqApiAsync();
         await AddNotesToDB(transcription);
     }
+
+    [Function("GetNotes")]
+    public async Task<HttpResponseData> GetNotes(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "notes/get-notes/{user}")]
+        HttpRequestData req, string user)
+    {
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+
+        var tableClient = _tableServiceClient.GetTableClient(TableConsts.notesTable);
+        var notesList = new List<object>();
+        string filter = $"PartitionKey eq '{user}'";
+
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter))
+        {
+            notesList.Add(new
+            {
+                Id = entity.RowKey,
+                Notes = entity.GetString("Notes"),
+                Timestamp = entity.GetDateTime("Timestamp")
+            });
+        }
+
+        string json = JsonSerializer.Serialize(notesList);
+        await response.WriteStringAsync(json);
+        return response;
+    }
 }
