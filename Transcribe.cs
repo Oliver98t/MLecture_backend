@@ -12,11 +12,11 @@ namespace Company.Function;
 
 class TranscriptAPI
 {
-    private static readonly HttpClient client = new HttpClient();
     public static async Task<string> TranscribeCall(string youtubeUrl)
     {
         string? TranscriptApiKey = Environment.GetEnvironmentVariable("TranscriptApiKey");
         string requestUrl = $"https://transcriptapi.com/api/v2/youtube/transcript?video_url={youtubeUrl}&format=text&include_timestamp=false";
+        HttpClient client = new HttpClient();
         string content;
         if(GlobalConsts.TranscriptAPIEnable == "true")
         {

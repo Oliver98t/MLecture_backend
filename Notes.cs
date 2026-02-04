@@ -48,7 +48,7 @@ public class GroqAPI
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         string result;
-        if(GlobalConsts.TranscriptAPIEnable == "true")
+        if(GlobalConsts.GroqAPIEnable == "true")
         {
             using var response = await client.PostAsync(url, content);
             response.EnsureSuccessStatusCode();
