@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Azure.Storage.Queues.Models;
 using Microsoft.Azure.WebJobs.Extensions.Tables;
 using Azure.Data.Tables;
+using System.Linq;
 using Azure;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,6 +15,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.IO;
 using Common;
+using AngleSharp.Common;
+using AngleSharp.Dom;
+using System.Runtime.ExceptionServices;
 
 namespace Company.Function;
 
@@ -43,41 +47,49 @@ public class GroqAPI
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        using var response = await client.PostAsync(url, content);
-        response.EnsureSuccessStatusCode();
-
-        var sb = new StringBuilder();
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
-
-        string? line;
-        while ((line = await reader.ReadLineAsync()) != null)
+        string result;
+        if(GlobalConsts.TranscriptAPIEnable == "true")
         {
-            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
-            var json = line.Substring(6);
-            if (json == "[DONE]") break;
-            try
+            using var response = await client.PostAsync(url, content);
+            response.EnsureSuccessStatusCode();
+
+            var sb = new StringBuilder();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
             {
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("choices", out var choices))
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
+                var json = line.Substring(6);
+                if (json == "[DONE]") break;
+                try
                 {
-                    foreach (var choice in choices.EnumerateArray())
+                    using var doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("choices", out var choices))
                     {
-                        if (choice.TryGetProperty("delta", out var delta))
+                        foreach (var choice in choices.EnumerateArray())
                         {
-                            if (delta.TryGetProperty("content", out var contentValue))
+                            if (choice.TryGetProperty("delta", out var delta))
                             {
-                                sb.Append(contentValue.GetString());
+                                if (delta.TryGetProperty("content", out var contentValue))
+                                {
+                                    sb.Append(contentValue.GetString());
+                                }
                             }
                         }
                     }
                 }
+                catch { /* ignore malformed lines */ }
             }
-            catch { /* ignore malformed lines */ }
+            result = sb.ToString();
         }
-        return sb.ToString();
+        else
+        {
+            result = @"Projectile Motion – Key Concepts & Worked Example (Bob’s “tombstoning”) – General Approach: Separate motion into vertical (affected by gravity, ay = -g = -9.8 m s⁻²) and horizontal (no net force, ax = 0, speed constant); time t links both components, find t from vertical then use in horizontal. Vertical Motion – Flight Time: sy = +50 m, uy = 0 m s⁻¹, ay = +9.8 m s⁻², t = sqrt(2sy/ay) ≈ 3.19 s. Horizontal Motion – Distance D: ux = 8 m s⁻¹, ax = 0, t = 3.19 s, D = ux t ≈ 25.6 m. Final Velocity at Impact: vy = sqrt(2gs_y) ≈ 31.3 m s⁻¹ (down), vx = 8 m s⁻¹, resultant v = sqrt(vx² + vy²) ≈ 32.3 m s⁻¹, impact angle θ = tan⁻¹(vy/vx) ≈ 75.7°. Common Pitfalls: Initial vertical velocity is zero for horizontal launches; s = ut + ½at² simplifies to s = ½at² if u = 0; time is identical for both components; air resistance ignored, ax = 0. Fired Projectile Example: u = 80 m s⁻¹, α = 30°, g = 9.8 m s⁻²; ux = u cos α ≈ 69.3 m s⁻¹, uy = u sin α = 40 m s⁻¹; horizontal: x = ux t, vertical: y = uy t – ½gt², total flight time t_total = 2uy/g, range R = ux t_total. Quick Reference: Vertical displacement (rest): s = ½at²; vertical final speed: vy = sqrt(2as); horizontal distance: D = ux t; resultant speed: v = sqrt(vx² + vy²); impact angle: θ = tan⁻¹(vy/vx); vector components: vx = v cos α, vy = v sin α. Take-away: Find time from vertical, plug into horizontal for range, use components for final speed/angle; covers all standard projectile motion questions at GCSE/A-level.";
+        }
+        return result;
     }
 }
 
@@ -100,14 +112,16 @@ public class Notes
         public HttpResponseData? HttpResponse { get; set; }
     }
 
-    private async Task AddNotesToDB(string notes)
+    private async Task AddNotesToDB(string user, string notes, string jobId)
     {
         var tableClient = _tableServiceClient.GetTableClient(TableConsts.notesTable);
         await tableClient.CreateIfNotExistsAsync();
 
         var entity = new TableEntity("User", Guid.NewGuid().ToString())
         {
+            { "User", user },
             { "Notes", notes },
+            { "JobId", jobId},
             { "Timestamp", DateTime.UtcNow }
         };
         await tableClient.AddEntityAsync(entity);
@@ -115,21 +129,20 @@ public class Notes
 
     [Function("StartCreateNotes")]
     public async Task<CreateNotesResponse> StartCreateNotes(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "notes/create-notes/")]
-        HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "notes/create-notes/{user}")]
+        HttpRequestData req, string user)
     {
         using var reader = new StreamReader(req.Body);
         string requestBody = await reader.ReadToEndAsync();
         using var doc = JsonDocument.Parse(requestBody);
         var root = doc.RootElement;
 
-        string callStatus = QueueConsts.triggerSuccessMessage;
+        string queueData;
         string url = string.Empty;
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
         try
         {
-            await response.WriteStringAsync(callStatus);
             if (root.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(urlProp.GetString()))
             {
                 url = urlProp.GetString()!;
@@ -139,17 +152,22 @@ public class Notes
                 throw new Exception("The 'url' property is missing or null.");
             }
             _logger.LogInformation($"{url}");
+
+            var result = new StartCreateNotesQueueData(user, url, Guid.NewGuid().ToString());
+            string json = JsonSerializer.Serialize(result);
+            queueData = json;
+            await response.WriteStringAsync($"{json}\n");
         }
         catch(Exception e)
         {
-            callStatus = QueueConsts.triggerFailMessage;
-            await response.WriteStringAsync(callStatus);
+            response = req.CreateResponse(HttpStatusCode.BadRequest);
+            queueData = QueueConsts.triggerFailMessage;
             _logger.LogInformation(e.Message);
         }
 
         return new CreateNotesResponse()
         {
-            Messages = new string[] { url },
+            Messages = new string[] { queueData },
             HttpResponse = response
         };
     }
@@ -158,36 +176,38 @@ public class Notes
     public async Task FormatNotesTrigger(
         [QueueTrigger(QueueConsts.transcriptionResults, Connection = "AzureWebJobsStorage")] QueueMessage message)
     {
-        string transcription = message.MessageText;
-        string notes = await GroqAPI.CallGroqApiAsync(transcription);
-        _logger.LogInformation(notes);
-        await AddNotesToDB(notes);
+        TranscribeTriggerQueueData? inputQueueData = JsonSerializer.Deserialize<TranscribeTriggerQueueData>(message.MessageText);
+        if(inputQueueData != null)
+        {
+            string notes = await GroqAPI.CallGroqApiAsync(inputQueueData.Transcript);
+            _logger.LogInformation(notes);
+            await AddNotesToDB(inputQueueData.User, notes, inputQueueData.JobId);
+        }
     }
 
     [Function("GetNotes")]
     public async Task<HttpResponseData> GetNotes(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "notes/get-notes/{user}")]
-        HttpRequestData req, string user)
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "notes/get-notes/{user}/{jobId}")]
+        HttpRequestData req, string user, string jobId)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-
         var tableClient = _tableServiceClient.GetTableClient(TableConsts.notesTable);
-        var notesList = new List<object>();
-        string filter = $"PartitionKey eq '{user}'";
-
-        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter))
+        string filter = $"User eq '{user}' and JobId eq '{jobId}'";
+        var result = tableClient.QueryAsync<TableEntity>(filter);
+        TableEntity? first = null;
+        await foreach(var entity in result)
         {
-            notesList.Add(new
-            {
-                Id = entity.RowKey,
-                Notes = entity.GetString("Notes"),
-                Timestamp = entity.GetDateTime("Timestamp")
-            });
+            first = entity;
+            break;
         }
-
-        string json = JsonSerializer.Serialize(notesList);
-        await response.WriteStringAsync(json);
+        string json = JsonSerializer.Serialize(
+            new
+                {
+                    User = first?.GetString("User"),
+                    Notes = first?.GetString("Notes")
+                });
+        await response.WriteStringAsync($"{json}\n");
         return response;
     }
 }
