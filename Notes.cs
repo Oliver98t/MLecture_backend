@@ -26,7 +26,11 @@ public class GroqAPI
     public static async Task<string> CallGroqApiAsync(string input)
     {
         string? apiKey = Environment.GetEnvironmentVariable("GroqApiKey");
-        string prompt = $"Transform the following into notes:\n{input}";
+        string promptParams = @"written using markdown with $...$ for inline and $$ on lines above and below the math block suitable for KaTex,
+                                for subscript rendering use curly braces for multi-character subscripts (e.g., v_{x}),
+                                do not inlcude ''' or ` in the output string
+                                (give the raw string)";
+        string prompt = $"Transform the following into notes under the conditons:\n{promptParams}\nTranscript:{input}";
         var url = "https://api.groq.com/openai/v1/chat/completions";
         var payload = new
         {
@@ -141,6 +145,7 @@ public class Notes
         string url = string.Empty;
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+
         try
         {
             if (root.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(urlProp.GetString()))
@@ -161,6 +166,7 @@ public class Notes
         catch(Exception e)
         {
             response = req.CreateResponse(HttpStatusCode.BadRequest);
+
             queueData = QueueConsts.triggerFailMessage;
             _logger.LogInformation(e.Message);
         }
@@ -192,6 +198,10 @@ public class Notes
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+        // CORS headers
+        response.Headers.Add("Access-Control-Allow-Origin", "http://localhost:5173");
+        response.Headers.Add("Access-Control-Allow-Methods", "GET, OPTIONS");
+        response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         var tableClient = _tableServiceClient.GetTableClient(TableConsts.notesTable);
         string filter = $"User eq '{user}' and JobId eq '{jobId}'";
         var result = tableClient.QueryAsync<TableEntity>(filter);
