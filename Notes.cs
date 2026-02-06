@@ -198,10 +198,6 @@ public class Notes
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-        // CORS headers
-        response.Headers.Add("Access-Control-Allow-Origin", "http://localhost:5173");
-        response.Headers.Add("Access-Control-Allow-Methods", "GET, OPTIONS");
-        response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         var tableClient = _tableServiceClient.GetTableClient(TableConsts.notesTable);
         string filter = $"User eq '{user}' and JobId eq '{jobId}'";
         var result = tableClient.QueryAsync<TableEntity>(filter);
