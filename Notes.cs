@@ -18,6 +18,7 @@ using Common;
 using AngleSharp.Common;
 using AngleSharp.Dom;
 using System.Runtime.ExceptionServices;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace Company.Function;
 
@@ -91,7 +92,7 @@ public class GroqAPI
         }
         else
         {
-            result = @"Projectile Motion – Key Concepts & Worked Example (Bob’s “tombstoning”) – General Approach: Separate motion into vertical (affected by gravity, ay = -g = -9.8 m s⁻²) and horizontal (no net force, ax = 0, speed constant); time t links both components, find t from vertical then use in horizontal. Vertical Motion – Flight Time: sy = +50 m, uy = 0 m s⁻¹, ay = +9.8 m s⁻², t = sqrt(2sy/ay) ≈ 3.19 s. Horizontal Motion – Distance D: ux = 8 m s⁻¹, ax = 0, t = 3.19 s, D = ux t ≈ 25.6 m. Final Velocity at Impact: vy = sqrt(2gs_y) ≈ 31.3 m s⁻¹ (down), vx = 8 m s⁻¹, resultant v = sqrt(vx² + vy²) ≈ 32.3 m s⁻¹, impact angle θ = tan⁻¹(vy/vx) ≈ 75.7°. Common Pitfalls: Initial vertical velocity is zero for horizontal launches; s = ut + ½at² simplifies to s = ½at² if u = 0; time is identical for both components; air resistance ignored, ax = 0. Fired Projectile Example: u = 80 m s⁻¹, α = 30°, g = 9.8 m s⁻²; ux = u cos α ≈ 69.3 m s⁻¹, uy = u sin α = 40 m s⁻¹; horizontal: x = ux t, vertical: y = uy t – ½gt², total flight time t_total = 2uy/g, range R = ux t_total. Quick Reference: Vertical displacement (rest): s = ½at²; vertical final speed: vy = sqrt(2as); horizontal distance: D = ux t; resultant speed: v = sqrt(vx² + vy²); impact angle: θ = tan⁻¹(vy/vx); vector components: vx = v cos α, vy = v sin α. Take-away: Find time from vertical, plug into horizontal for range, use components for final speed/angle; covers all standard projectile motion questions at GCSE/A-level.";
+            result = GroqAPIConsts.testResult;
         }
         return result;
     }
