@@ -15,7 +15,7 @@ public class HealthCheck
     }
 
     [Function("HealthCheck")]
-    public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req)
+    public IActionResult Run([HttpTrigger(AuthorizationLevel.Admin, "get", "post")] HttpRequest req)
     {
         _logger.LogInformation("API is running");
         return new OkObjectResult("API is running\n");
