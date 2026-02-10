@@ -13,7 +13,12 @@ public class User
     public string? Role {get; set;}
     public string? Email {get; set;}
     public string? Password {get; set;}
+}
 
+public class LoginRequest
+{
+    public string? Email {get; set;}
+    public string? Password {get; set;}
 }
 
 public class UserFunctions
@@ -28,9 +33,29 @@ public class UserFunctions
         _tableServiceClient = tableServiceClient;
     }
 
+    private async Task<TableEntity?> checkUserExists(string email)
+    {
+        var tableClient = _tableServiceClient.GetTableClient(TableName);
+        await tableClient.CreateIfNotExistsAsync();
+
+        try
+        {
+            var queryResults = tableClient.QueryAsync<TableEntity>(e => e.RowKey == email);
+            await foreach (var entity in queryResults)
+            {
+                return entity; // Return the first matching user
+            }
+            return null; // No user found
+        }
+        catch (Exception)
+        {
+            return null; // Error occurred
+        }
+    }
+
     [Function("GetUsers")]
     public async Task<IActionResult> GetUsers(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "users")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Admin, "get", Route = "users")] HttpRequest req)
     {
         var tableClient = _tableServiceClient.GetTableClient(TableName);
         await tableClient.CreateIfNotExistsAsync();
@@ -54,7 +79,7 @@ public class UserFunctions
 
     [Function("GetUsersPartition")]
     public async Task<IActionResult> GetUsersPartition(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "users/{PartitionKey}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Admin, "get", Route = "users/{PartitionKey}")] HttpRequest req,
         string PartitionKey)
     {
         var tableClient = _tableServiceClient.GetTableClient(TableName);
@@ -79,7 +104,7 @@ public class UserFunctions
 
     [Function("CreateUser")]
     public async Task<IActionResult> CreateUser(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "user")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Admin, "post", Route = "user")] HttpRequest req)
     {
         _logger.LogInformation("Creating new User");
 
@@ -87,8 +112,6 @@ public class UserFunctions
         {
             // Read the request body
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-
-            // In a real app, you'd deserialize and validate the JSON
             var newUser = JsonSerializer.Deserialize<User>(requestBody);
             if(newUser != null)
             {
@@ -120,5 +143,34 @@ public class UserFunctions
             _logger.LogError(ex, "Error creating user");
             return new BadRequestObjectResult("Invalid request data");
         }
+    }
+
+    [Function("Login")]
+    public async Task<IActionResult> Login(
+    [HttpTrigger(AuthorizationLevel.Admin, "post", Route = "user/login")] HttpRequest req)
+    {
+        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+        var loginAttempt = JsonSerializer.Deserialize<LoginRequest>(requestBody);
+        IActionResult result = new JsonResult(new
+        {
+            success = true
+        });
+        // check if email exist in database
+        if(loginAttempt != null && !string.IsNullOrEmpty(loginAttempt.Email))
+        {
+            var entity = await checkUserExists(loginAttempt.Email);
+            // verify password
+            if(entity?.GetString("Password") != loginAttempt.Password)
+            {
+                result = new BadRequestObjectResult("login fail");
+            }
+        }
+        else
+        {
+            result = new BadRequestObjectResult("login fail");
+        }
+
+
+        return result;
     }
 }
