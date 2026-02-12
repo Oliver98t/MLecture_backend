@@ -9,16 +9,8 @@ namespace Company.Function;
 
 public class User
 {
-    public string? Name {get; set;}
-    public string? Role {get; set;}
-    public string? Email {get; set;}
-    public string? Password {get; set;}
-}
-
-public class LoginRequest
-{
-    public string? Email {get; set;}
-    public string? Password {get; set;}
+    public string? Role { get; set; }
+    public string? Email { get; set; }
 }
 
 public class UserFunctions
@@ -113,9 +105,9 @@ public class UserFunctions
             // Read the request body
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var newUser = JsonSerializer.Deserialize<User>(requestBody);
-            if(newUser != null)
+            if (newUser != null)
             {
-                _logger.LogInformation($"{newUser.Name} {newUser.Email}");
+                _logger.LogInformation($"{newUser.Email}");
 
             }
             else
@@ -130,8 +122,6 @@ public class UserFunctions
             // Add entity
             var entity = new TableEntity(newUser.Role, newUser.Email)
             {
-                { "Name", newUser.Name },
-                { "Password", newUser.Password },
                 { "Timestamp", DateTime.UtcNow }
             };
             await tableClient.AddEntityAsync(entity);
@@ -143,34 +133,5 @@ public class UserFunctions
             _logger.LogError(ex, "Error creating user");
             return new BadRequestObjectResult("Invalid request data");
         }
-    }
-
-    [Function("Login")]
-    public async Task<IActionResult> Login(
-    [HttpTrigger(AuthorizationLevel.Admin, "post", Route = "user/login")] HttpRequest req)
-    {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var loginAttempt = JsonSerializer.Deserialize<LoginRequest>(requestBody);
-        IActionResult result = new JsonResult(new
-        {
-            success = true
-        });
-        // check if email exist in database
-        if(loginAttempt != null && !string.IsNullOrEmpty(loginAttempt.Email))
-        {
-            var entity = await checkUserExists(loginAttempt.Email);
-            // verify password
-            if(entity?.GetString("Password") != loginAttempt.Password)
-            {
-                result = new BadRequestObjectResult("login fail");
-            }
-        }
-        else
-        {
-            result = new BadRequestObjectResult("login fail");
-        }
-
-
-        return result;
     }
 }
