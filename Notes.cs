@@ -1,24 +1,13 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Functions.Worker.Http;
 using Azure.Storage.Queues.Models;
-using Microsoft.Azure.WebJobs.Extensions.Tables;
 using Azure.Data.Tables;
-using System.Linq;
-using Azure;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
-using System.IO;
 using Common;
-using AngleSharp.Common;
-using AngleSharp.Dom;
-using System.Runtime.ExceptionServices;
-using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace Company.Function;
 

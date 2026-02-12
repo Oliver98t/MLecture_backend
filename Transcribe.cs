@@ -1,8 +1,5 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Extensions.Tables;
 using Azure.Storage.Queues.Models;
 using Azure.Data.Tables;
 using System.Text.Json;
