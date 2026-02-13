@@ -126,6 +126,13 @@ public class Notes
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "notes/create-notes/{user}")]
         HttpRequestData req, string user)
     {
+        // check if user exists
+        var entity = await UserFunctions.checkUserExists(_tableServiceClient, user);
+        if(entity == null)
+        {
+            // add user to db if they dont exist
+            await UserFunctions.createUser(_tableServiceClient, user, "standard");
+        }
         using var reader = new StreamReader(req.Body);
         string requestBody = await reader.ReadToEndAsync();
         using var doc = JsonDocument.Parse(requestBody);
