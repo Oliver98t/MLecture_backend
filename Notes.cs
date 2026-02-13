@@ -16,10 +16,16 @@ public class GroqAPI
     public static async Task<string> CallGroqApiAsync(string input)
     {
         string? apiKey = Environment.GetEnvironmentVariable("GroqApiKey");
-        string promptParams = @"written using markdown with $...$ for inline and $$ on lines above and below the math block suitable for KaTex,
-                                for subscript rendering use curly braces for multi-character subscripts (e.g., v_{x}),
-                                do not inlcude ''' or ` in the output string
-                                (give the raw string)";
+        string promptParams = @". using standard Markdown with no HTML tags
+                                . follow rehype-katex and ketex syntax when prodcuing the notes 
+                                . make headings and sub headings bold
+                                . $...$ for inline math
+                                . $$...$$ for block math, DO NOT USE [...]
+                                . DO NOT INCLUDE non breaking spaces
+                                . for subscript rendering use curly braces for multi-character subscripts (e.g., v_{x})
+                                . do not inlcude ''' or ` in the output string (give the raw string)
+                                . remove or replace all non-standard Unicode spaces and invisible characters";
+
         string prompt = $"Transform the following into notes under the conditons:\n{promptParams}\nTranscript:{input}";
         var url = "https://api.groq.com/openai/v1/chat/completions";
         var payload = new
