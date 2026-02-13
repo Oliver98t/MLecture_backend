@@ -37,7 +37,7 @@ public class UserFunctions
             var queryResults = tableClient.QueryAsync<TableEntity>(e => e.RowKey == email);
             await foreach (var entity in queryResults)
             {
-                result = entity; // Return the first matching user
+                return result = entity; // Return the first matching user
             }
             result = null; // No user found
         }
