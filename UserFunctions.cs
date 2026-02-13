@@ -17,7 +17,7 @@ public class UserFunctions
 {
     private readonly ILogger<UserFunctions> _logger;
     private readonly TableServiceClient _tableServiceClient;
-    private readonly string TableName = "Users";
+    static readonly string TableName = "Users";
 
     public UserFunctions(ILogger<UserFunctions> logger, TableServiceClient tableServiceClient)
     {
@@ -25,24 +25,44 @@ public class UserFunctions
         _tableServiceClient = tableServiceClient;
     }
 
-    private async Task<TableEntity?> checkUserExists(string email)
+    public static async Task<TableEntity?> checkUserExists(
+        TableServiceClient tableServiceClient,
+        string email)
     {
-        var tableClient = _tableServiceClient.GetTableClient(TableName);
+        var tableClient = tableServiceClient.GetTableClient(TableName);
         await tableClient.CreateIfNotExistsAsync();
-
+        TableEntity? result;
         try
         {
             var queryResults = tableClient.QueryAsync<TableEntity>(e => e.RowKey == email);
             await foreach (var entity in queryResults)
             {
-                return entity; // Return the first matching user
+                result = entity; // Return the first matching user
             }
-            return null; // No user found
+            result = null; // No user found
         }
         catch (Exception)
         {
-            return null; // Error occurred
+            result = null; // Error occurred
         }
+        return result;
+    }
+
+    public static async Task createUser(
+        TableServiceClient tableServiceClient,
+        string email,
+        string role)
+    {
+        // Get or create table
+        var tableClient = tableServiceClient.GetTableClient(TableName);
+        await tableClient.CreateIfNotExistsAsync();
+
+        // Add entity
+        var entity = new TableEntity(role, email)
+            {
+                { "Timestamp", DateTime.UtcNow }
+            };
+        await tableClient.AddEntityAsync(entity);
     }
 
     [Function("GetUsers")]
@@ -127,11 +147,17 @@ public class UserFunctions
             await tableClient.AddEntityAsync(entity);
 
             return new JsonResult(entity);
+
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating user");
-            return new BadRequestObjectResult("Invalid request data");
+            return new JsonResult(
+                new
+                {
+                    Exists = true
+                }
+            );
         }
     }
 }
