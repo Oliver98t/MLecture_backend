@@ -1,4 +1,4 @@
-# mlecture
+# MLecture Backend
 
 This project is an **Azure Function App** built with C# (.NET 8). It demonstrates serverless functions that can be deployed to Azure or run locally using Docker.
 
